@@ -2,6 +2,8 @@ var express = require('express');
 var expressWs = require("express-ws");
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
+const {uuid, currentTime} = require('./utils')
+const {UserModel, ChatModel} = require('./chatdb')
 
 let messageID = 0
 var app = new express();
@@ -29,7 +31,8 @@ app.ws('/', function (ws, req) {
         res.type = 'chat'
         res.result = {
           ...msg.params,
-          id: messageID
+          id: uuid(),
+          time: currentTime()
         }
         msg.params.type = 'chat'
         Object.keys(wsClients).forEach(key => {
@@ -50,25 +53,47 @@ app.ws('/', function (ws, req) {
   })
 })
 
+// 登录接口
 app.post('/login', (req, res) => {
   const {body: {username, password}} = req
-  if(username === 'yangyang' && password === '371210'){
-    res.send({
-      code: 0,
-      msg: "登录成功"
+  UserModel.findOne({name: username}, (err, doc) => {
+    if(!doc || doc.password !== password){
+      res.send({
+        code: 1,
+        msg: "账号或密码错误"
+      })
+      return
+    }
+    if(doc.password === password){
+      res.send({
+        code: 0,
+        msg: "登录成功"
+      })
+    }
+  })
+})
+
+// 注册接口
+app.post('/register', (req, res) => {
+  const {body: {username, password}} = req
+  console.log(12313)
+  UserModel.findOne({name: username}, (err, doc) => {
+    if(doc){
+      res.send({
+        code: 1,
+        msg: "该用户已被注册"
+      })
+      return
+    }
+
+    UserModel.create({ name: username, password}, function (err) {
+      if (err) return
+      res.send({
+        code: 0,
+        msg: "注册成功"
+      })
     })
-    return
-  }
-  if(username === 'cashon' && password === '371210'){
-    res.send({
-      code: 0,
-      msg: "登录成功"
-    })
-    return 
-  }
-  res.send({
-    code: 1,
-    msg: "账号或密码错误"
+
   })
 })
 
